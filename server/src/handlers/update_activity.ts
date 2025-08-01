@@ -1,19 +1,47 @@
 
+import { db } from '../db';
+import { activitiesTable } from '../db/schema';
 import { type UpdateActivityInput, type Activity } from '../schema';
+import { eq } from 'drizzle-orm';
 
 export const updateActivity = async (input: UpdateActivityInput): Promise<Activity> => {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is updating an existing activity entry.
-    // Should validate that the user owns the activity before allowing updates.
-    return Promise.resolve({
-        id: input.id,
-        user_id: 1, // Placeholder
-        type: input.type || 'run',
-        distance_miles: input.distance_miles || 0,
-        duration_hours: input.duration_hours || 0,
-        duration_minutes: input.duration_minutes || 0,
-        duration_seconds: input.duration_seconds || 0,
-        activity_date: input.activity_date || new Date(),
-        created_at: new Date()
-    } as Activity);
+  // Build update object with only provided fields
+  const updateData: any = {};
+  
+  if (input.type !== undefined) {
+    updateData.type = input.type;
+  }
+  if (input.distance_miles !== undefined) {
+    updateData.distance_miles = input.distance_miles.toString(); // Convert number to string for numeric column
+  }
+  if (input.duration_hours !== undefined) {
+    updateData.duration_hours = input.duration_hours;
+  }
+  if (input.duration_minutes !== undefined) {
+    updateData.duration_minutes = input.duration_minutes;
+  }
+  if (input.duration_seconds !== undefined) {
+    updateData.duration_seconds = input.duration_seconds;
+  }
+  if (input.activity_date !== undefined) {
+    updateData.activity_date = input.activity_date;
+  }
+
+  // Update the activity
+  const result = await db.update(activitiesTable)
+    .set(updateData)
+    .where(eq(activitiesTable.id, input.id))
+    .returning()
+    .execute();
+
+  if (result.length === 0) {
+    throw new Error(`Activity with id ${input.id} not found`);
+  }
+
+  // Convert numeric fields back to numbers before returning
+  const activity = result[0];
+  return {
+    ...activity,
+    distance_miles: parseFloat(activity.distance_miles) // Convert string back to number
+  };
 };
